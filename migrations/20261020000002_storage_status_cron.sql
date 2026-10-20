@@ -127,8 +127,8 @@ create trigger interview_answers_expiry
 -- Storage API, so the function does the work. Set these two secrets once in the SQL editor:
 --   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
 --   select vault.create_secret('<a long random string, same as CRON_SECRET>', 'cron_secret');
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_cron with schema pg_catalog;
+create extension if not exists pg_net with schema extensions;
 
 select cron.schedule(
   'purge-expired-interview-media',
