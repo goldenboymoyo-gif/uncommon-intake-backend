@@ -65,7 +65,6 @@ async function openAiTranscribe(audio: Uint8Array, filename: string, mime: strin
   const form = new FormData();
   form.append('file', new Blob([audio as BlobPart], { type: mime }), filename);
   form.append('model', model);
-  form.append('response_format', 'json');
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${requireEnv('OPENAI_API_KEY')}` },
