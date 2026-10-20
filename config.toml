@@ -1,0 +1,24 @@
+# Local Supabase settings (npx supabase start). Hosted projects: set the same in the Dashboard.
+project_id = "uncommon-intake"
+
+[auth]
+enabled = true
+site_url = "uncommonintake://"
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 3600
+
+# Both emails must show the code ({{ .Token }}), not a link.
+[auth.email.template.confirmation]
+subject = "Your Uncommon Intake code"
+content_path = "./supabase/templates/code.html"
+
+[auth.email.template.magic_link]
+subject = "Your Uncommon Intake code"
+content_path = "./supabase/templates/code.html"
+
+[functions.purge-media]
+verify_jwt = false
