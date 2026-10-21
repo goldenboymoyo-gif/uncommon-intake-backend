@@ -37,6 +37,8 @@ const RULES = [
   'Be professional, warm and respectful, like a good interviewer at a well run organisation.',
   'Each question must be open (not yes/no), ask about one thing only, and be answerable in 1 to 3 minutes by speaking or typing.',
   'Use simple English. Short sentences. No jargon, no slang, no trick questions, no brain teasers.',
+  'Always speak to the applicant as "you". Never use their name or write about them in the third person.',
+  'Do not use hyphens, dashes or arrows. Write "12 month" not "12-month", and "cofounder" not "co-founder".',
   'Ask about skills, learning, projects, work or volunteering, problem solving, teamwork, and why they want to join.',
   'Refer to real things in the document so each question feels personal, for example a course, job, project or skill they list.',
   'If the document is short or has little experience, ask about learning, interests, everyday problem solving and goals instead. Never make them feel judged for little experience.',
