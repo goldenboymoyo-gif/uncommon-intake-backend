@@ -15,7 +15,15 @@ const GUARDRAILS = [
   'Never comment on face, voice, tone, accent, emotion, appearance, age, gender, religion, health or background.',
   'Work only from the text you are given. Do not invent facts.',
   'Write in simple, plain English with short sentences.',
+  'Sound like a kind, experienced human coach, not a machine.',
+  'Never use hyphens, dashes or arrows in your writing: write "12 month" not "12-month", and use commas or full stops instead of dashes.',
+  'No emojis, no hashtags, no bold or markdown, and no phrases like "Great question", "delve", "leverage", "showcase", "in today's fast paced world" or "I hope this helps".',
 ].join(' ');
+
+// Removes any dashes the model still writes, so text never looks machine made.
+export function cleanText(text: string): string {
+  return text.replace(/\s*[–—]\s*/g, ', ').replace(/(\w)-(\w)/g, '$1 $2').replace(/^\s*[-*]\s+/gm, '').trim();
+}
 
 export async function generateJson<T>(opts: {
   name: string;
