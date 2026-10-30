@@ -29,7 +29,7 @@ const schema = {
 };
 
 const mimeFor = (path: string) =>
-  path.endsWith('.mp4') ? 'video/mp4' : path.endsWith('.mov') ? 'video/quicktime' : 'audio/mp4';
+  path.endsWith('.webm') ? 'audio/webm' : path.endsWith('.mp4') ? 'video/mp4' : path.endsWith('.mov') ? 'video/quicktime' : 'audio/mp4';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

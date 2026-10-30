@@ -1,7 +1,9 @@
 // Staff send a message to every student: a new survey, or a short announcement.
+// New job opportunities also go to graduates.
 // Each student gets an in-app notification and a phone pop-up (push), even when the app is closed.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
 import { adminClient, getCaller, isStaffRole } from '../_shared/clients.ts';
+import { sendWebPush } from '../_shared/webpush.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -9,14 +11,14 @@ Deno.serve(async (req) => {
     const caller = await getCaller(req);
     if (!caller || !isStaffRole(caller.role)) return fail('Only staff can do this.', 403);
 
-    const { kind, title, body } = await req.json();
+    const { kind, title, body, audience } = await req.json();
     if (!['survey', 'general'].includes(kind)) return fail('Unknown message type.');
     const cleanTitle = String(title ?? '').trim().slice(0, 80);
     const cleanBody = String(body ?? '').trim().slice(0, 300);
     if (!cleanTitle || !cleanBody) return fail('Please add a title and a message.');
 
     const db = adminClient();
-    const { data: students } = await db.from('profiles').select('id, push_token').eq('role', 'student');
+    const { data: students } = await db.from('profiles').select('id, push_token').in('role', audience === 'learners' ? ['student', 'graduate'] : ['student']);
     const list = students ?? [];
     if (!list.length) return json({ sent: 0 });
 
@@ -33,6 +35,11 @@ Deno.serve(async (req) => {
         ),
       }).catch((e) => console.error('push failed', e));
     }
+    await sendWebPush(db, list.map((s) => s.id), {
+      title: cleanTitle,
+      body: cleanBody,
+      url: audience === 'learners' ? '/jobs' : kind === 'survey' ? '/surveys' : '/notifications',
+    });
     return json({ sent: list.length });
   } catch (e) {
     console.error(e);

@@ -27,7 +27,7 @@ export async function getCaller(req: Request) {
     .eq('id', user.id)
     .single();
   return profile as
-    | { id: string; role: 'applicant' | 'student' | 'staff' | 'admin'; first_names: string; surname: string; email: string; push_token: string | null }
+    | { id: string; role: 'applicant' | 'student' | 'graduate' | 'staff' | 'admin'; first_names: string; surname: string; email: string; push_token: string | null }
     | null;
 }
 
