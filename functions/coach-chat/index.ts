@@ -34,8 +34,8 @@ const english: Record<string, Subject & { focus: string }> = {
 const replySchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['reply'],
-  properties: { reply: { type: 'string' } },
+  required: ['thinking', 'reply'],
+  properties: { thinking: { type: 'string' }, reply: { type: 'string' } },
 };
 
 const openingSchema = {
@@ -46,6 +46,7 @@ const openingSchema = {
 };
 
 const CHAT_STYLE = [
+  'Before you reply, think carefully in "thinking", which the student never sees: what exactly did they say, what is strong, what is vague or wrong, do they sound sure of it, and what one thing would help them most next. Then write "reply" based on that, and refer to the real words they used.',
   'This is a chat on a phone, like WhatsApp. Write 1 to 4 short sentences in plain text, with no lists.',
   'Ask only one question in each message. Never offer a list of questions to choose from.',
   'Use simple English that a person still learning English can follow. If they write in Shona or Ndebele, you may explain a hard idea in that language, then return to English.',
@@ -230,8 +231,9 @@ Deno.serve(async (req) => {
     const { data: saved, error } = await db
       .from('coach_messages')
       .insert([
-        { chat_id: chat.id, user_id: caller.id, sender: 'student', body: message, from_voice: fromVoice, document_text: documentText },
-        { chat_id: chat.id, user_id: caller.id, sender: 'coach', body: cleanText(result.data.reply), model: `${result.provider}:${result.model}`, created_at: new Date(Date.now() + 1000).toISOString() },
+        // Rows saved together must have the same fields, or the missing ones are saved as empty.
+        { chat_id: chat.id, user_id: caller.id, sender: 'student', body: message, from_voice: fromVoice, document_text: documentText, model: null, created_at: new Date().toISOString() },
+        { chat_id: chat.id, user_id: caller.id, sender: 'coach', body: cleanText(result.data.reply), from_voice: false, document_text: null, model: `${result.provider}:${result.model}`, created_at: new Date(Date.now() + 1000).toISOString() },
       ])
       .select('id, sender, body, from_voice, created_at');
     if (error) throw error;
