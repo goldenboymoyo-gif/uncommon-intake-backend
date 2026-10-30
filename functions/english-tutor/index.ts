@@ -64,7 +64,7 @@ const teacherSchema = {
 
 const TEACHER = [
   'You are Chipo, a patient, professional English teacher at Uncommon in Zimbabwe, teaching one person in a phone chat.',
-  'Always speak as a teacher, never as a general assistant. Stay on learning English.',
+  'Always speak as a teacher, never as a general assistant. Stay on learning English. Teach only in English.',
   'Before you reply, think carefully in "thinking", which the student never sees: what they wrote, what is right, what is wrong and why, and the best next small step. Then write "reply".',
   'Write at most 90 words in plain text. Do not use lists. Ask only one question in each message, then wait.',
   'Match your words to the level given. For A1 and A2 use very short sentences and common words.',
@@ -78,12 +78,16 @@ const TEACHER = [
   'Leave "speak_text" empty unless a listening or pronunciation task needs words read aloud. For listening tasks, put the sentence, conversation or story in "speak_text" and do NOT repeat it in "reply": just tell them to tap Listen and then ask your question.',
 ].join(' ');
 
-const languageRule = (language: string, level: string) =>
-  language === 'English'
-    ? 'Teach only in English.'
-    : LEVELS.indexOf(level) >= 2
-      ? `English is the main language. Use ${language} only for one short explanation when they are clearly stuck, and encourage them to reply in English.`
-      : `English is the main language. You may add one short explanation in ${language} for a hard idea, and encourage them to try in English. If you are not sure of the ${language} words, explain in simple English instead.`;
+// How much help the student gets depends on how many answers in a row they got wrong.
+function helpRule(kind: string, answers: Row[]) {
+  if (kind !== 'lesson' && kind !== 'daily') return '';
+  const lastRight = answers.map((a) => a.is_correct).lastIndexOf(true);
+  const wrongInARow = answers.length - 1 - lastRight;
+  const base = 'If they say they do not know or ask for help, do not mark it. Be kind, break the question into one small easy step, and give a simple example from daily life.';
+  if (wrongInARow === 0) return base;
+  if (wrongInARow === 1) return `${base} Their last answer was wrong. Say what was good about it, give one small hint without the answer, and let them try again or try an easier one.`;
+  return `${base} They got ${wrongInARow} answers wrong in a row, so they are struggling. Tell them it is fine, show the right answer, explain it in very short, easy words with one example, then ask a much easier question they can get right. Only go back to harder questions after they get it right.`;
+}
 
 const percent = (rows: Row[]) => (rows.length ? Math.round((rows.filter((r) => r.is_correct).length / rows.length) * 100) : null);
 
@@ -112,8 +116,8 @@ const weakestSkills = (scores: ReturnType<typeof skillScores>) =>
 function buildPlan(level: string, scores: ReturnType<typeof skillScores>, passedIds: Set<string>) {
   const weak = weakestSkills(scores).slice(0, 2);
   const focus = weak.length ? weak : (['grammar', 'vocabulary'] as Skill[]);
-  const lessonsFor = (skill: Skill) => curriculum.find((m) => m.skill === skill)!.lessons.filter((l) => !passedIds.has(l.id));
-  const recommended = [...focus.flatMap((s) => lessonsFor(s).slice(0, 2)), ...lessonsFor('speaking').slice(0, 1)]
+  const lessonsFor = (skill: Skill) => curriculum.filter((m) => m.skill === skill).flatMap((m) => m.lessons).filter((l) => !passedIds.has(l.id));
+  const recommended = [...lessonsFor('speaking').slice(0, 1), ...focus.flatMap((s) => lessonsFor(s).slice(0, 2))]
     .filter((l, i, all) => all.findIndex((x) => x.id === l.id) === i)
     .slice(0, 5)
     .map((l) => ({ id: l.id, title: l.title }));
@@ -123,7 +127,7 @@ function buildPlan(level: string, scores: ReturnType<typeof skillScores>, passed
     objectives: [
       `Get stronger in ${focus.join(' and ')}.`,
       next ? `Reach ${next} by passing the level test.` : 'Keep your C2 English strong with regular practice.',
-      'Speak English with more confidence.',
+      'Speak well with friends, family, workmates and senior people.',
     ],
     recommended,
     daily: 'Finish at least one daily activity.',
@@ -219,7 +223,6 @@ Deno.serve(async (req) => {
       ];
       return json({
         level: profile.level,
-        language: profile.language,
         points: profile.points,
         streak: profile.streak_days,
         learning_minutes: Math.round(profile.learning_seconds / 60),
@@ -247,12 +250,6 @@ Deno.serve(async (req) => {
             (!lastLevelTest || Date.now() - new Date(lastLevelTest.completed_at).getTime() >= 3 * 86400000),
         },
       });
-    }
-
-    if (body.action === 'set_language') {
-      if (!['English', 'Shona', 'Ndebele', 'Tonga'].includes(body.language)) return fail('Please choose a language.');
-      await db.from('english_profiles').update({ language: body.language, updated_at: new Date().toISOString() }).eq('user_id', caller.id);
-      return json({ language: body.language });
     }
 
     // ---------- Read a teacher message aloud. Only saved messages, and each is made once. ----------
@@ -300,14 +297,14 @@ Deno.serve(async (req) => {
     const sessionRule = (session: Row, graded: number, correct: number, activityTask = '') => {
       const target = TARGET[session.kind as Kind];
       if (session.kind === 'assessment') {
-        return `This is the placement check. Ask one question at CEFR level ${session.next_level} testing ${session.next_skill}. Give only a very short, kind comment on each answer and do not teach yet. For speaking, ask them to tap the microphone, but accept typing if they cannot. Question ${Math.min(graded + 1, target)} of ${target}.`;
+        return `This is the placement check. Ask one question at CEFR level ${session.next_level} testing ${session.next_skill}. Give only a very short, kind comment on each answer and do not teach yet. If they say they do not know, mark it as not correct, tell them that is fine, and move on. For speaking, ask them to tap the microphone, but accept typing if they cannot. Question ${Math.min(graded + 1, target)} of ${target}.`;
       }
       if (session.kind === 'weekly' || session.kind === 'level_test') {
-        return `This is a ${session.kind === 'weekly' ? 'weekly progress test' : 'level test'} at CEFR level ${session.next_level}. Your next question must test ${session.next_skill}. Give a very short comment and do not teach. Question ${Math.min(graded + 1, target)} of ${target}.`;
+        return `This is a ${session.kind === 'weekly' ? 'weekly progress test' : 'level test'} at CEFR level ${session.next_level}. Your next question must test ${session.next_skill}. Give a very short comment and do not teach. If they say they do not know, mark it as not correct, tell them that is fine, and move on. Question ${Math.min(graded + 1, target)} of ${target}.`;
       }
       if (session.kind === 'daily') return `This is a short daily activity at level ${session.level}. ${activityTask} Marked answers so far: ${graded} of ${target}.`;
       const found = findLesson(session.lesson_id);
-      return `Lesson: "${found?.lesson.title}". Objective: ${found?.lesson.objective} Level: ${session.level}. Teach with a short explanation and an example, then give one exercise at a time. If they get something wrong, explain it and check again with a similar exercise before moving on. Marked answers so far: ${graded}, correct: ${correct}. Keep going until they show they understand.${session.skill === 'speaking' ? ' Ask them to use the microphone, and make the conversation a little harder as they do well. Typing is fine if they cannot use it.' : ''}`;
+      return `Lesson: "${found?.lesson.title}". Objective: ${found?.lesson.objective} Level: ${session.level}. Teach with a short explanation and an example, then give one exercise at a time. If they get something wrong, explain it and check again with a similar exercise before moving on. Marked answers so far: ${graded}, correct: ${correct}. Keep going until they show they understand.${found?.module.id === 'situations' ? ' Practise with short role plays set in everyday life and tech workplaces in Zimbabwe: you play the other person, such as the friend, parent, workmate, supervisor or director, and they answer. Show how the words change with who they are talking to, so they are not too casual with senior people or too stiff with friends.' : ''}${session.skill === 'speaking' ? ' Ask them to use the microphone, and make the conversation a little harder as they do well. Typing is fine if they cannot use it.' : ''}`;
     };
 
     // ---------- Start something ----------
@@ -365,7 +362,7 @@ Deno.serve(async (req) => {
       if (error) throw error;
 
       // Lesson openings are shared to save AI costs, so they hold nothing personal.
-      const cacheKey = kind === 'lesson' ? `${lessonId}:${level}:${profile.language}` : null;
+      const cacheKey = kind === 'lesson' ? `${lessonId}:${level}` : null;
       let opening: string | null = null;
       let speakText = '';
       if (cacheKey) {
@@ -376,7 +373,7 @@ Deno.serve(async (req) => {
       if (!opening) {
         const result = await generateJson<Row>({
           name: 'english_opening',
-          instructions: `${TEACHER} ${languageRule(profile.language, level)} ${sessionRule(session, 0, 0, activityTask)} Start now: greet them in a few words, say what today's goal is, and ask your first question or give your first example and exercise. "graded" must be null.${kind === 'lesson' ? '' : ` ${await memory()}`}`,
+          instructions: `${TEACHER} ${sessionRule(session, 0, 0, activityTask)} Start now: greet them in a few words, say what today's goal is, and ask your first question or give your first example and exercise. "graded" must be null.${kind === 'lesson' ? '' : ` ${await memory()}`}`,
           input: `First name: ${kind === 'lesson' ? 'do not use a name' : caller.first_names.split(' ')[0] || 'not given'}`,
           schema: teacherSchema,
         });
@@ -423,7 +420,7 @@ Deno.serve(async (req) => {
 
     const result = await generateJson<Row>({
       name: 'english_teacher',
-      instructions: `${TEACHER} ${languageRule(profile.language, session.level)} ${sessionRule(session, answers.length, answers.filter((a) => a.is_correct).length, activity?.task)} ${await memory()}`,
+      instructions: `${TEACHER} ${sessionRule(session, answers.length, answers.filter((a) => a.is_correct).length, activity?.task)} ${helpRule(session.kind, answers)} ${await memory()}`,
       input: `Chat so far:\n${transcript}\nStudent${fromVoice ? ' (voice note, the words we heard)' : ''}: ${message}`,
       schema: teacherSchema,
     });

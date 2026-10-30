@@ -8,6 +8,22 @@ const lessons = (prefix: string, items: [string, string][]): Lesson[] =>
 
 export const curriculum: Module[] = [
   {
+    id: 'situations',
+    title: 'English for real life',
+    skill: 'speaking',
+    lessons: lessons('c', [
+      ['With friends', 'Greet, joke and chat with friends in relaxed, natural English.'],
+      ['With family', 'Talk warmly with brothers and sisters, and respectfully with parents and elders.'],
+      ['With workmates', 'Chat with workmates, ask for help and agree who does what.'],
+      ['With your supervisor', 'Give an update, ask a question and admit a mistake to your supervisor.'],
+      ['With managers and directors', 'Greet senior people with respect and speak to them briefly and clearly.'],
+      ['With customers and visitors', 'Welcome customers and visitors, and answer them politely.'],
+      ['Choosing the right words', 'Say the same thing in the right way for a friend, a workmate and a director.'],
+      ['Saying no politely', 'Say no and disagree with friends, workmates and senior people without being rude.'],
+      ['Saying sorry and asking for help', 'Say sorry and ask for help in the right way for each person.'],
+    ]),
+  },
+  {
     id: 'vocabulary',
     title: 'Vocabulary',
     skill: 'vocabulary',
