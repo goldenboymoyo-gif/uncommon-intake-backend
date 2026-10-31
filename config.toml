@@ -20,5 +20,8 @@ content_path = "./supabase/templates/code.html"
 subject = "Your Uncommon Intake code"
 content_path = "./supabase/templates/code.html"
 
+[functions.student-reminders]
+verify_jwt = false
+
 [functions.purge-media]
 verify_jwt = false
