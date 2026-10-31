@@ -150,9 +150,6 @@ create policy "applicant updates own application" on public.applications for upd
 drop policy "answers owner or staff read" on public.application_answers;
 create policy "answers owner or staff read" on public.application_answers for select
   using (public.can_see_application(application_id) or exists (select 1 from public.applications a where a.id = application_id and a.applicant_id = auth.uid()));
-drop policy "letter feedback owner read" on public.letter_feedback;
-create policy "letter feedback owner read" on public.letter_feedback for select
-  using (public.can_see_application(application_id) or exists (select 1 from public.applications a where a.id = application_id and a.applicant_id = auth.uid()));
 drop policy "interview answers owner or staff read" on public.interview_answers;
 create policy "interview answers owner or staff read" on public.interview_answers for select
   using (public.can_see_application(application_id) or exists (select 1 from public.applications a where a.id = application_id and a.applicant_id = auth.uid()));
