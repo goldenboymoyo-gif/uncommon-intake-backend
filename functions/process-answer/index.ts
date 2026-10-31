@@ -2,7 +2,7 @@
 // then writes a short summary against the staff checklist.
 // Text only: no face, voice tone or emotion analysis. No score and no decision.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
-import { adminClient, getCaller, isStaffRole } from '../_shared/clients.ts';
+import { adminClient, canSeeHub, getCaller } from '../_shared/clients.ts';
 import { generateJson, transcribe } from '../_shared/ai.ts';
 
 type Summary = {
@@ -42,11 +42,11 @@ Deno.serve(async (req) => {
 
     const { data: answer } = await db
       .from('interview_answers')
-      .select('*, applications!inner(applicant_id, intake_id), interview_questions!inner(prompt)')
+      .select('*, applications!inner(applicant_id, intake_id, hub_id), interview_questions!inner(prompt)')
       .eq('id', answerId)
       .single();
     if (!answer) return fail('Answer not found.', 404);
-    if (answer.applications.applicant_id !== caller.id && !isStaffRole(caller.role)) return fail('Answer not found.', 404);
+    if (answer.applications.applicant_id !== caller.id && !canSeeHub(caller, answer.applications.hub_id)) return fail('Answer not found.', 404);
 
     // 1. Speech to text
     let transcript: string = answer.transcript ?? '';

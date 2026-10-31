@@ -13,11 +13,15 @@ Deno.serve(async (req) => {
     if (!email.includes('@')) return fail('Please type a valid email.');
 
     const db = adminClient();
-    const { data: person } = await db.from('profiles').select('id, role, first_names, surname').ilike('email', email).maybeSingle();
+    const { data: person } = await db.from('profiles').select('id, role, first_names, surname, hub_id').ilike('email', email).maybeSingle();
     if (!person) return fail('We found no account with that email. They need to create an account first.', 404);
     if (isStaffRole(person.role)) return fail('This is a staff account.');
 
-    const { error } = await db.from('profiles').update({ role: 'graduate' }).eq('id', person.id);
+    // A graduate with no hub yet joins the hub of the staff member adding them.
+    if (caller.role !== 'admin' && (!caller.hub_id || (person.hub_id && person.hub_id !== caller.hub_id))) {
+      return fail('This person belongs to another hub.', 403);
+    }
+    const { error } = await db.from('profiles').update({ role: 'graduate', hub_id: person.hub_id ?? caller.hub_id }).eq('id', person.id);
     if (error) throw error;
     return json({ name: `${person.first_names} ${person.surname}`.trim() });
   } catch (e) {

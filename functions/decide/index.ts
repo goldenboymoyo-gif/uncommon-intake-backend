@@ -1,6 +1,6 @@
 // A staff member records a decision. A person decides; this function only saves and sends it.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
-import { adminClient, getCaller, isStaffRole } from '../_shared/clients.ts';
+import { adminClient, canSeeHub, getCaller, isStaffRole } from '../_shared/clients.ts';
 import { notify } from '../_shared/notify.ts';
 
 const messages = {
@@ -28,6 +28,9 @@ Deno.serve(async (req) => {
     if (!(decision in messages)) return fail('Please choose a decision.');
 
     const db = adminClient();
+    const { data: target } = await db.from('applications').select('hub_id').eq('id', application_id).maybeSingle();
+    if (!target || !canSeeHub(caller, target.hub_id)) return fail('This applicant applied to another hub.', 403);
+
     const { data: app, error } = await db
       .from('applications')
       .update({ decision, review_status: decision, decided_by: caller.id, decided_at: new Date().toISOString() })

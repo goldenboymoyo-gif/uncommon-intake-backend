@@ -23,12 +23,16 @@ export async function getCaller(req: Request) {
   if (!user) return null;
   const { data: profile } = await adminClient()
     .from('profiles')
-    .select('id, role, first_names, surname, email, push_token')
+    .select('id, role, first_names, surname, email, push_token, hub_id')
     .eq('id', user.id)
     .single();
   return profile as
-    | { id: string; role: 'applicant' | 'student' | 'graduate' | 'staff' | 'admin'; first_names: string; surname: string; email: string; push_token: string | null }
+    | { id: string; role: 'applicant' | 'student' | 'graduate' | 'staff' | 'admin'; first_names: string; surname: string; email: string; push_token: string | null; hub_id: string | null }
     | null;
 }
 
 export const isStaffRole = (role?: string) => role === 'staff' || role === 'admin';
+
+// Admins reach every hub. Staff only reach the hub an admin gave them.
+export const canSeeHub = (caller: { role: string; hub_id: string | null }, hubId?: string | null) =>
+  caller.role === 'admin' || (caller.role === 'staff' && !!caller.hub_id && caller.hub_id === hubId);

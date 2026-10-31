@@ -1,5 +1,5 @@
-// Staff send a message to every student: a new survey, or a short announcement.
-// New job opportunities also go to graduates.
+// Staff send a message to the students of their hub: a new survey, or a short announcement.
+// An admin's message goes to every hub. New job opportunities go to everyone, graduates too.
 // Each student gets an in-app notification and a phone pop-up (push), even when the app is closed.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
 import { adminClient, getCaller, isStaffRole } from '../_shared/clients.ts';
@@ -18,7 +18,11 @@ Deno.serve(async (req) => {
     if (!cleanTitle || !cleanBody) return fail('Please add a title and a message.');
 
     const db = adminClient();
-    const { data: students } = await db.from('profiles').select('id, push_token').in('role', audience === 'learners' ? ['student', 'graduate'] : ['student']);
+    const everyone = audience === 'learners' || caller.role === 'admin';
+    if (!everyone && !caller.hub_id) return fail('An admin needs to choose your hub first.', 403);
+    let people = db.from('profiles').select('id, push_token').in('role', audience === 'learners' ? ['student', 'graduate'] : ['student']);
+    if (!everyone) people = people.eq('hub_id', caller.hub_id!);
+    const { data: students } = await people;
     const list = students ?? [];
     if (!list.length) return json({ sent: 0 });
 

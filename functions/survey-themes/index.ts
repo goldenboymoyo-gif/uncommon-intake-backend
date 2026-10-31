@@ -1,7 +1,7 @@
 // Finds common themes in written survey answers for staff.
 // Every theme keeps the ids of the raw answers it came from, so staff can always check the source.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
-import { adminClient, getCaller, isStaffRole } from '../_shared/clients.ts';
+import { adminClient, canSeeHub, getCaller, isStaffRole } from '../_shared/clients.ts';
 import { generateJson } from '../_shared/ai.ts';
 
 type Themes = { themes: { theme: string; answer_numbers: number[] }[] };
@@ -34,6 +34,8 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const { data: question } = await db.from('survey_questions').select('id, survey_id, prompt, kind').eq('id', question_id).single();
     if (!question || question.kind !== 'text') return fail('Themes work on written answers only.');
+    const { data: survey } = await db.from('surveys').select('hub_id').eq('id', question.survey_id).single();
+    if (!survey || !canSeeHub(caller, survey.hub_id)) return fail('This survey belongs to another hub.', 403);
 
     const { data: responses } = await db.from('survey_responses').select('id, value').eq('question_id', question_id);
     const answers = (responses ?? []).filter((r) => typeof r.value === 'string' && r.value.trim());

@@ -3,7 +3,7 @@
 // Runs once per application: if questions already exist, the same ones are returned.
 // The AI only writes questions. It does not judge the CV or the person.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
-import { adminClient, getCaller, isStaffRole } from '../_shared/clients.ts';
+import { adminClient, canSeeHub, getCaller } from '../_shared/clients.ts';
 import { generateJson } from '../_shared/ai.ts';
 import { documentToText } from '../_shared/documents.ts';
 
@@ -58,10 +58,10 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const { data: app } = await db
       .from('applications')
-      .select('id, applicant_id, intake_id, submitted_at, cv_path, cv_name, about_text')
+      .select('id, applicant_id, hub_id, intake_id, submitted_at, cv_path, cv_name, about_text')
       .eq('id', application_id)
       .single();
-    if (!app || (app.applicant_id !== caller.id && !isStaffRole(caller.role))) return fail('Application not found.', 404);
+    if (!app || (app.applicant_id !== caller.id && !canSeeHub(caller, app.hub_id))) return fail('Application not found.', 404);
     if (!app.submitted_at) return fail('Please send your application first.');
 
     // Same questions every time: never regenerate.

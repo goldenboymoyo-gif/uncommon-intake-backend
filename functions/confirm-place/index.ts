@@ -12,14 +12,14 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const { data: app } = await db
       .from('applications')
-      .select('id, applicant_id, decision')
+      .select('id, applicant_id, decision, hub_id')
       .eq('id', application_id)
       .single();
     if (!app || app.applicant_id !== caller.id) return fail('Application not found.', 404);
     if (app.decision !== 'accepted') return fail('Only accepted applicants can confirm a place.');
 
     await db.from('applications').update({ place_confirmed_at: new Date().toISOString() }).eq('id', application_id);
-    if (caller.role === 'applicant') await db.from('profiles').update({ role: 'student' }).eq('id', caller.id);
+    if (caller.role === 'applicant') await db.from('profiles').update({ role: 'student', hub_id: app.hub_id }).eq('id', caller.id);
     return json({ ok: true });
   } catch (e) {
     console.error(e);

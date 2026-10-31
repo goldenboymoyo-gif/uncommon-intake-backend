@@ -18,7 +18,7 @@
 
 -- 4. Make someone staff (accounts are created by an admin, never by sign up).
 --    First invite them in Supabase Dashboard > Authentication > Users, then:
--- update profiles set role = 'staff' where email = '<their work email>';
+-- update profiles set role = 'admin', hub_id = null where email = '<their work email>';
 -- update profiles set role = 'admin' where email = '<admin email>';
 
 -- 5. Publishing a 2026 graduate story (only with written consent):

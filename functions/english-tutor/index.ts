@@ -147,12 +147,17 @@ Deno.serve(async (req) => {
     // ---------- Staff: progress summaries only. Conversations stay private. ----------
     if (body.action === 'staff_overview') {
       if (!isStaffRole(caller.role)) return fail('Only staff can do this.', 403);
-      const [{ data: people }, { data: learners }, { data: answers }, { data: sessions }, { data: mistakes }] = await Promise.all([
+      // Admins see every hub. Staff see learners from their own hub.
+      if (caller.role !== 'admin' && !caller.hub_id) return json({ students: [], common: [] });
+      let learnerQuery = db.from('profiles').select('id, first_names, surname, role').in('role', ['student', 'graduate']);
+      if (caller.role !== 'admin') learnerQuery = learnerQuery.eq('hub_id', caller.hub_id!);
+      const { data: learners } = await learnerQuery;
+      const learnerIds = (learners ?? []).map((p: Row) => p.id);
+      const [{ data: people }, { data: answers }, { data: sessions }, { data: mistakes }] = await Promise.all([
         db.from('english_profiles').select('user_id, level, last_active_on, streak_days, learning_seconds'),
-        db.from('profiles').select('id, first_names, surname, role').in('role', ['student', 'graduate']),
         db.from('english_answers').select('user_id, is_correct, created_at').order('created_at', { ascending: false }).limit(5000),
         db.from('english_sessions').select('user_id, kind, title, score, passed, completed_at').eq('status', 'completed').order('completed_at', { ascending: false }).limit(2000),
-        db.from('english_mistakes').select('pattern, times').limit(5000),
+        db.from('english_mistakes').select('pattern, times').in('user_id', learnerIds).limit(5000),
       ]);
       const twoWeeksAgo = Date.now() - 14 * 86400000;
       const students = (learners ?? []).map((p: Row) => {
