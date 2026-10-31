@@ -23,11 +23,11 @@ export async function getCaller(req: Request) {
   if (!user) return null;
   const { data: profile } = await adminClient()
     .from('profiles')
-    .select('id, role, first_names, surname, email, push_token, hub_id')
+    .select('id, role, first_names, surname, email, push_token, hub_id, is_hub_lead')
     .eq('id', user.id)
     .single();
   return profile as
-    | { id: string; role: 'applicant' | 'student' | 'graduate' | 'staff' | 'admin'; first_names: string; surname: string; email: string; push_token: string | null; hub_id: string | null }
+    | { id: string; role: 'applicant' | 'student' | 'graduate' | 'staff' | 'admin'; first_names: string; surname: string; email: string; push_token: string | null; hub_id: string | null; is_hub_lead: boolean }
     | null;
 }
 
