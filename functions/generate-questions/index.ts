@@ -76,16 +76,16 @@ Deno.serve(async (req) => {
     if (app.cv_path) {
       const { data: file, error } = await db.storage.from('application-cvs').download(app.cv_path);
       if (error || !file) return fail('We could not open your CV. Please contact the Uncommon team.');
-      text = await documentToText(new Uint8Array(await file.arrayBuffer()), app.cv_name ?? app.cv_path);
-    }
-    if (text.length < 30) {
-      return fail('We could not read enough words in your CV. Please contact the Uncommon team for help.');
+      // Some CVs are photos or old Word files. They are still accepted, and get general questions.
+      text = await documentToText(new Uint8Array(await file.arrayBuffer()), app.cv_name ?? app.cv_path).catch(() => '');
     }
 
     const result = await generateJson<Questions>({
       name: 'interview_questions',
       instructions: RULES,
-      input: `${app.cv_path ? 'Applicant CV' : 'Applicant wrote about themselves (no CV)'}:\n"""\n${text}\n"""`,
+      input: text.trim().length < 30
+        ? 'We could not read this applicant\'s CV, so nothing is known about their background. Ask 5 friendly general questions about who they are, why they want to join a free technology bootcamp, what they want to do with technology, and how they solve problems. In "based_on", write "General question".'
+        : `${app.cv_path ? 'Applicant CV' : 'Applicant wrote about themselves (no CV)'}:\n"""\n${text}\n"""`,
       schema,
     });
 
