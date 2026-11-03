@@ -1,5 +1,5 @@
 // Writes 5 professional interview questions for one applicant, based on their CV
-// (or their short "about you" text if they have no CV).
+// (or their short "about you" text if they have no CV) and their motivation letter.
 // Runs once per application: if questions already exist, the same ones are returned.
 // The AI only writes questions. It does not judge the CV or the person.
 import { corsHeaders, fail, json } from '../_shared/cors.ts';
@@ -33,7 +33,7 @@ const schema = {
 
 const RULES = [
   'You write interview questions for people applying to a free, 12 month, full-time technology bootcamp for unemployed young adults in Zimbabwe.',
-  'Write exactly 5 questions based on the applicant document below.',
+  'Write exactly 5 questions based on the applicant documents below: their CV or what they wrote about themselves, and their motivation letter when given.',
   'Be professional, warm and respectful, like a good interviewer at a well run organisation.',
   'Each question must be open (not yes/no), ask about one thing only, and be answerable in 1 to 3 minutes by speaking or typing.',
   'Use simple English. Short sentences. No jargon, no slang, no trick questions, no brain teasers.',
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const { data: app } = await db
       .from('applications')
-      .select('id, applicant_id, hub_id, intake_id, submitted_at, cv_path, cv_name, about_text')
+      .select('id, applicant_id, hub_id, intake_id, submitted_at, cv_path, cv_name, about_text, letter_path, letter_name')
       .eq('id', application_id)
       .single();
     if (!app || (app.applicant_id !== caller.id && !canSeeHub(caller, app.hub_id))) return fail('Application not found.', 404);
@@ -79,13 +79,20 @@ Deno.serve(async (req) => {
       // Some CVs are photos or old Word files. They are still accepted, and get general questions.
       text = await documentToText(new Uint8Array(await file.arrayBuffer()), app.cv_name ?? app.cv_path).catch(() => '');
     }
+    // The letter helps too, but a letter we cannot read never stops the questions.
+    let letter = '';
+    if (app.letter_path) {
+      const { data: file } = await db.storage.from('application-cvs').download(app.letter_path);
+      if (file) letter = await documentToText(new Uint8Array(await file.arrayBuffer()), app.letter_name ?? app.letter_path).catch(() => '');
+    }
+    const letterPart = letter.trim().length >= 30 ? `\n\nApplicant motivation letter:\n"""\n${letter.trim()}\n"""` : '';
 
     const result = await generateJson<Questions>({
       name: 'interview_questions',
       instructions: RULES,
-      input: text.trim().length < 30
+      input: text.trim().length < 30 && !letterPart
         ? 'We could not read this applicant\'s CV, so nothing is known about their background. Ask 5 friendly general questions about who they are, why they want to join a free technology bootcamp, what they want to do with technology, and how they solve problems. In "based_on", write "General question".'
-        : `${app.cv_path ? 'Applicant CV' : 'Applicant wrote about themselves (no CV)'}:\n"""\n${text}\n"""`,
+        : `${text.trim().length >= 30 ? `${app.cv_path ? 'Applicant CV' : 'Applicant wrote about themselves (no CV)'}:\n"""\n${text}\n"""` : ''}${letterPart}`,
       schema,
     });
 
