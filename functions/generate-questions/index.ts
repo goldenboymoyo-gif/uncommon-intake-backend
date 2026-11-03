@@ -1,4 +1,4 @@
-// Writes 5 professional interview questions for one applicant, based on their CV
+// Writes 10 professional interview questions for one applicant, based on their CV
 // (or their short "about you" text if they have no CV) and their motivation letter.
 // Runs once per application: if questions already exist, the same ones are returned.
 // The AI only writes questions. It does not judge the CV or the person.
@@ -16,8 +16,8 @@ const schema = {
   properties: {
     questions: {
       type: 'array',
-      minItems: 5,
-      maxItems: 5,
+      minItems: 10,
+      maxItems: 10,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -33,14 +33,14 @@ const schema = {
 
 const RULES = [
   'You write interview questions for people applying to a free, 12 month, full-time technology bootcamp for unemployed young adults in Zimbabwe.',
-  'Write exactly 5 questions based on the applicant documents below: their CV or what they wrote about themselves, and their motivation letter when given.',
+  'Write exactly 10 questions based on the applicant documents below: their CV or what they wrote about themselves, and their motivation letter when given.',
   'Be professional, warm and respectful, like a good interviewer at a well run organisation.',
   'Each question must be open (not yes/no), ask about one thing only, and be answerable in 1 to 3 minutes by speaking or typing.',
   'Use simple English. Short sentences. No jargon, no slang, no trick questions, no brain teasers.',
   'Always speak to the applicant as "you". Never use their name or write about them in the third person.',
   'Do not use hyphens, dashes or arrows. Write "12 month" not "12-month", and "cofounder" not "co-founder".',
   'Ask about skills, learning, projects, work or volunteering, problem solving, teamwork, and why they want to join.',
-  'Refer to real things in the document so each question feels personal, for example a course, job, project or skill they list.',
+  'Ask about both documents: about half the questions from the CV or about text, and about half from the motivation letter (why they want to join, their goals). If only one can be read, use that one. Refer to real things in the document so each question feels personal, for example a course, job, project or skill they list.',
   'If the document is short or has little experience, ask about learning, interests, everyday problem solving and goals instead. Never make them feel judged for little experience.',
   'NEVER ask about age, date of birth, gender, marital status, children or family plans, religion, ethnicity, tribe, nationality, health, disability, pregnancy, politics, money, or gaps in employment.',
   'Never quote personal contact details, ID numbers or addresses from the document.',
@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
       .select('id, position, prompt')
       .eq('application_id', app.id)
       .order('position');
+    // Applicants from before keep their 5 questions.
     if (existing && existing.length >= 5) return json(existing);
 
     let text = (app.about_text ?? '').trim();
@@ -91,12 +92,12 @@ Deno.serve(async (req) => {
       name: 'interview_questions',
       instructions: RULES,
       input: text.trim().length < 30 && !letterPart
-        ? 'We could not read this applicant\'s CV, so nothing is known about their background. Ask 5 friendly general questions about who they are, why they want to join a free technology bootcamp, what they want to do with technology, and how they solve problems. In "based_on", write "General question".'
+        ? 'We could not read this applicant\'s CV, so nothing is known about their background. Ask 10 friendly general questions about who they are, why they want to join a free technology bootcamp, what they want to do with technology, and how they solve problems. In "based_on", write "General question".'
         : `${text.trim().length >= 30 ? `${app.cv_path ? 'Applicant CV' : 'Applicant wrote about themselves (no CV)'}:\n"""\n${text}\n"""` : ''}${letterPart}`,
       schema,
     });
 
-    const rows = result.data.questions.slice(0, 5).map((q, i) => ({
+    const rows = result.data.questions.slice(0, 10).map((q, i) => ({
       intake_id: app.intake_id,
       application_id: app.id,
       position: i + 1,
@@ -105,7 +106,7 @@ Deno.serve(async (req) => {
       ai_generated: true,
       model: `${result.provider}:${result.model}`,
     }));
-    if (rows.length < 5) return fail('We could not prepare your questions. Please try again in a moment.', 500);
+    if (rows.length < 10) return fail('We could not prepare your questions. Please try again in a moment.', 500);
 
     const { data: saved, error: insErr } = await db.from('interview_questions').insert(rows).select('id, position, prompt');
     if (insErr) {
