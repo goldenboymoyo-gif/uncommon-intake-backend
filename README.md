@@ -44,8 +44,7 @@ npx supabase db push
 npx supabase functions deploy --use-api
 ```
 
-Set the secrets in the Supabase dashboard (Edge Functions, Secrets). Names are in
-`functions/.env.example`: `AI_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TRANSCRIBE_MODEL`,
+Set these secrets in the Supabase dashboard (Edge Functions, Secrets): `AI_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TRANSCRIBE_MODEL`,
 `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 Never commit real values.
 
